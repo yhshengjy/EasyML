@@ -5,6 +5,7 @@ from imblearn.over_sampling import RandomOverSampler, SMOTE, ADASYN
 from imblearn.under_sampling import RandomUnderSampler, EditedNearestNeighbours
 import pickle
 
+#from easyml.evaluate_model import _specificity_score
 from .feature_selection import *
 from .train_model import *
 from .evaluate_model import *
@@ -25,6 +26,7 @@ class easyML:
                  pseudocount=0.00001,
                  sampling_strategy='auto',
                  stratify=False,
+                 group=None,
                  scaling_method=None,
                  var_filter=0,
                  cor_filter=None,
@@ -102,6 +104,13 @@ class easyML:
             self.data = filename
         else:
             raise ValueError("Invalid input. It should be either a filenames or DataFrame.")
+
+        #data去掉group
+        if group is not None:
+            self.group = self.data[group]
+            self.data = self.data.drop(columns=[group])
+        else:
+            self.group = None
 
         self.target = target
         self.case = case
@@ -285,6 +294,8 @@ class easyML:
             cvf = self.cv_f
         elif cv is not None:
             cvf = _create_cv_object(cv=cv, fold=fold, repeat=repeat, random_state=random_state)
+        if self.group is not None:
+            cvf = cvf.split(self.X_train, self.y_train, self.group)
 
         if model is not None:
             estimator = model
@@ -357,6 +368,7 @@ class easyML:
                 Cross-validation method. Supported cross-validation methods include:
                 - 'KFold'
                 - 'StratifiedKFold'
+                - 'StratifiedGroupKFold'
                 - 'RepeatedKFold'
                 - 'RepeatedStratifiedKFold'
 
@@ -392,6 +404,8 @@ class easyML:
             y_train = self.y_train
 
         self.cv_f = _create_cv_object(cv=cv, fold=fold, repeat=repeat, random_state=random_state)
+        #if self.group is not None:
+        #    self.cv_f = self.cv_f.split(X_train, y_train, self.group)
 
         if self.task == 'classification':
             trained_model = train_classification_model(X_train=X_train,
@@ -399,6 +413,7 @@ class easyML:
                                                        # X_test=self.X_test,
                                                        # y_test=self.y_test,
                                                        model_names=model_names,
+                                                       group=self.group,
                                                        scoring=scoring,
                                                        n_iter=n_iter,
                                                        search_methods=search_methods,
@@ -459,13 +474,13 @@ class easyML:
             Cross-validation method to be used. If None, the method specified in self is used. Supported methods include:
             - 'KFold'
             - 'StratifiedKFold'
-            - 'GroupKFold'
+            - 'StratifiedGroupKFold'
             - 'GroupShuffleSplit'
 
         fold : int, default=5
             Number of folds for cross-validation. If None, the number of folds specified in self is used.
 
-        plot_roc_pr_model : bool, default=False
+        plot_model : bool, default=False
             Whether to plot ROC and Precision-Recall curves for the model.
 
         use_selected_features : bool, default=False
@@ -559,6 +574,7 @@ class easyML:
                                                     y_test=y,
                                                     scoring=scoring,
                                                     cv=cve,
+                                                    group=self.group,
                                                     task=self.task)
             mp = pd.DataFrame.from_dict(self.model_performance, orient='index')
             display(mp)
@@ -568,6 +584,7 @@ class easyML:
                                                        y_test=y,
                                                        scoring=scoring,
                                                        cv=cve,
+                                                       group=self.group,
                                                        task=self.task)
             mp = pd.DataFrame.from_dict(self.model_fs_performance, orient='index')
             display(mp)
@@ -1138,8 +1155,8 @@ def _create_cv_object(cv, fold, repeat, random_state):
         return KFold(n_splits=fold, shuffle=True, random_state=random_state)
     elif cv == 'StratifiedKFold':
         return StratifiedKFold(n_splits=fold, shuffle=True, random_state=random_state)
-    elif cv == 'groupkfold':
-        return GroupKFold(n_splits=fold)
+    elif cv == 'StratifiedGroupKFold':
+        return StratifiedGroupKFold(n_splits=fold, shuffle=True, random_state=random_state)
     elif cv == 'RepeatedKFold':
         return RepeatedKFold(n_splits=fold, n_repeats=repeat, random_state=random_state)
     elif cv == 'RepeatedStratifiedKFold':
@@ -1246,6 +1263,7 @@ def study_to_study_transfer(filename,
                             task='classification',
                             split=False,
                             stratify=False,
+                            group=None,
                             transformation_method=None,
                             balance_method=None,
                             pseudocount=0.00001,
@@ -1256,6 +1274,7 @@ def study_to_study_transfer(filename,
                             search_methods='random',
                             cv='StratifiedKFold',
                             fold=5,
+                            repeat=5,
                             random_state=None,
                             cmap='YlGnBu',
                             plotpath='./',
@@ -1323,7 +1342,7 @@ def study_to_study_transfer(filename,
             Cross-validation method. Supported cross-validation methods include:
             - 'KFold'
             - 'StratifiedKFold'
-            - 'GroupKFold'
+            - 'StratifiedGroupKFold'
         fold : int, default=5
             Number of folds for cross-validation. Defaults to 5.
         random_state : int, default=None
@@ -1335,7 +1354,7 @@ def study_to_study_transfer(filename,
         n_jobs : int, default=-1
             Number of jobs to run in parallel. Defaults to -1.
     """
-
+    from IPython.display import display
     if isinstance(filename, str) and os.path.isdir(filename):
         files = [f for f in os.listdir(filename) if f.endswith('.csv')]
         files = [os.path.join(filename, f) for f in files]
@@ -1346,12 +1365,21 @@ def study_to_study_transfer(filename,
 
     fastml_instances = {}
     evaluation_results = {}
+    if balance_method is None:
+        bm = [None] * len(files)
+    if not isinstance(cv, list):
+        cv = [cv] * len(files)
 
     df_list = []
-    for file in files:
-        # print(file)
+    group_list = []
+    for i, file in enumerate(files):
+        #print(file)
         # f =  os.path.splitext(os.path.basename(file))[0]
         df = pd.read_csv(file, index_col=0)
+        if group in df.columns:
+            group_list.append(group)
+        else:
+            group_list.append(None)
         df['study'] = [os.path.splitext(os.path.basename(file))[0]] * df.shape[0]
         # print(df)
         df_list.append(df)
@@ -1362,14 +1390,20 @@ def study_to_study_transfer(filename,
         dataset_name = os.path.splitext(os.path.basename(file))[0]
         df_file = tot_df[tot_df['study'] == dataset_name]
         df_file = df_file.drop('study', axis=1)
-
+        group_study = group_list[i]
+        balance_m = bm[i]
+        cvs = cv[i]
+        #print(group_study)
+        if group_study is None:
+            df_file = df_file.drop(group, axis=1)
         easyml = easyML(filename=df_file,
                         case=case,
                         target=target,
                         task=task,
                         split=split,
+                        group=group_list[i],
                         transformation_method=transformation_method,
-                        balance_method=balance_method,
+                        balance_method=balance_m,
                         pseudocount=pseudocount,
                         sampling_strategy=sampling_strategy,
                         stratify=stratify,
@@ -1384,12 +1418,13 @@ def study_to_study_transfer(filename,
                            scoring=scoring,
                            n_iter=n_iter,
                            search_methods=search_methods,
-                           cv=cv,
+                           cv=cvs,
                            fold=fold,
+                           repeat=repeat,
                            use_selected_features=False,
                            random_state=random_state)
 
-        easyml.evaluate_model(scoring=[scoring], random_state=random_state)
+        easyml.evaluate_model(scoring=[scoring], plot_model=False, random_state=random_state)
         easyml.select_model(model_name)
 
         evaluation_results[(dataset_name, dataset_name)] = easyml.model_performance[model_name][scoring]
@@ -1403,7 +1438,10 @@ def study_to_study_transfer(filename,
                 # df = pd.read_csv(other_file, index_col=0)
                 # print(other_dataset_name)
                 df = tot_df[tot_df['study'] == other_dataset_name]
+                #print(df.shape)
                 df = df.drop('study', axis=1)
+                if group in df.columns:
+                    df = df.drop(group, axis=1)
                 # print(df.shape)
                 # from sklearn.preprocessing import LabelEncoder
                 # X_test = df.drop([target, 'study'], axis=1)
@@ -1428,10 +1466,10 @@ def study_to_study_transfer(filename,
                               scaling_method=scaling_method,
                               # sampling_strategy=sampling_strategy
                               )
-                # print(od.X_train.shape)
+                #print(od.X_train.shape)
                 X_test = od.X_train
                 y_test = od.y_train
-
+                #display(X_test)
                 # 使用当前数据集的模型进行预测
                 y_pred = easyml.final_model.predict(X_test)
 
@@ -1442,6 +1480,8 @@ def study_to_study_transfer(filename,
                     evaluation_results[(dataset_name, other_dataset_name)] = precision_score(y_test, y_pred)
                 elif scoring == 'recall':
                     evaluation_results[(dataset_name, other_dataset_name)] = recall_score(y_test, y_pred)
+                elif scoring == 'specificity':
+                    evaluation_results[(dataset_name, other_dataset_name)] = _specificity_score(y_test, y_pred)
                 elif scoring == 'f1':
                     evaluation_results[(dataset_name, other_dataset_name)] = f1_score(y_test, y_pred)
                 elif scoring == 'roc_auc':
@@ -1456,10 +1496,11 @@ def study_to_study_transfer(filename,
 def leave_one_study_out(filename,
                         target,
                         case,
-                        # split=True,
                         model_name='RandomForest',
                         task='classification',
                         stratify=False,
+                        split=False,
+                        group=None,
                         transformation_method=None,
                         balance_method=None,
                         pseudocount=0.00001,
@@ -1470,6 +1511,7 @@ def leave_one_study_out(filename,
                         search_methods='random',
                         cv='StratifiedKFold',
                         fold=5,
+                        repeat=5,
                         random_state=None,
                         plotpath='./',
                         n_jobs=-1):
@@ -1583,6 +1625,8 @@ def leave_one_study_out(filename,
                         case=case,
                         target=target,
                         task=task,
+                        split=split,
+                        group=group,
                         transformation_method=transformation_method,
                         balance_method=balance_method,
                         pseudocount=pseudocount,
@@ -1602,6 +1646,7 @@ def leave_one_study_out(filename,
                            search_methods=search_methods,
                            cv=cv,
                            fold=fold,
+                           repeat=repeat,
                            use_selected_features=False,
                            random_state=random_state)
 
@@ -1619,6 +1664,8 @@ def leave_one_study_out(filename,
         # y_test = df[target].apply(lambda x: 1 if x == case else 0)
         # y_pred = easyml.trained_model[0].predict(X_test)
         df = df.drop('study', axis=1)
+        if group in df.columns:
+            df = df.drop(group, axis=1)
         od = EncodeSplit(df,
                          target_column=target,
                          task=task,
@@ -1671,6 +1718,7 @@ def oneliner_train_model(filename,
                          model_name=['RandomForest'],
                          task='classification',
                          stratify=True,
+                         group=None,
                          transformation_method='Relative_Abundance',
                          balance_method=None,
                          pseudocount=0.00001,
@@ -1685,7 +1733,7 @@ def oneliner_train_model(filename,
                          fold=5,
                          holdout=None,
                          eval_scoring=['roc_auc', 'f1'],
-                         plot_roc_pr_model=True,
+                         plot_model=True,
                          model_select_metric='roc_auc',
                          plot_savedir='./',
                          random_state=None,
@@ -1795,7 +1843,7 @@ def oneliner_train_model(filename,
            - 'roc_auc'
            - 'mcc'
 
-       plot_roc_pr_model : bool, default=True
+       plot_model : bool, default=True
            If True, ROC and Precision-Recall curves will be plotted.
 
        plot_savedir : str or None, default='./'
@@ -1816,6 +1864,7 @@ def oneliner_train_model(filename,
                     target=target,
                     split=split,
                     task=task,
+                    group=group,
                     transformation_method=transformation_method,
                     balance_method=balance_method,
                     pseudocount=pseudocount,
@@ -1837,23 +1886,23 @@ def oneliner_train_model(filename,
                        random_state=random_state)
 
     easyml.evaluate_model(  # holdout=holdout,
-        scoring=eval_scoring,
-        plot_roc_pr_model=plot_roc_pr_model,
-        plot_savedir=plot_savedir,
-        random_state=random_state)
+                          scoring=eval_scoring,
+                          plot_model=plot_model,
+                          plot_savedir=plot_savedir,
+                          random_state=random_state)
 
     easyml.auto_select_model(metric=model_select_metric)
 
     if split:
         easyml.evaluate_model(holdout='test',
                               scoring=eval_scoring,
-                              plot_roc_pr_model=plot_roc_pr_model,
+                              plot_model=plot_model,
                               plot_savedir=plot_savedir,
                               random_state=random_state)
     elif holdout is not None:
         easyml.evaluate_model(holdout=holdout,
                               scoring=eval_scoring,
-                              plot_roc_pr_model=plot_roc_pr_model,
+                              plot_model=plot_model,
                               plot_savedir=plot_savedir,
                               random_state=random_state)
 
@@ -1865,7 +1914,7 @@ def _create_bar_chart(data, scoring, plotpath):
     values = list(data.values())
 
     bar = plt.bar(categories, values)
-    plt.title('Leave One Cohort Out Validation')
+    plt.title('Leave One Study Out Validation')
     plt.xlabel('Study')
     plt.ylabel(scoring)
     plt.xticks(rotation=45)

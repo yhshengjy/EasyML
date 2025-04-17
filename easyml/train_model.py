@@ -26,6 +26,7 @@ def train_classification_model(X_train,
                                # X_test,
                                # y_test,
                                model_names,
+                               group=None,
                                scoring='accuracy',
                                search_methods='bayesian',
                                n_iter=100,
@@ -59,7 +60,7 @@ def train_classification_model(X_train,
                                        scoring=scoring,
                                        n_jobs=n_jobs)
 
-            grid_search.fit(X_train, y_train)
+            grid_search.fit(X_train, y_train, groups=group)
             best_model = grid_search.best_estimator_
             best_score = grid_search.best_score_
 
@@ -78,7 +79,7 @@ def train_classification_model(X_train,
                                                n_jobs=n_jobs,
                                                random_state=random_state)
 
-            random_search.fit(X_train, y_train)
+            random_search.fit(X_train, y_train, groups=group)
             best_model = random_search.best_estimator_
             best_score = random_search.best_score_
 

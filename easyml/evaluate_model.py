@@ -3,7 +3,7 @@ from sklearn.metrics import *
 from sklearn.model_selection import cross_val_score
 import numpy as np
 from .utils import check_model_name, return_model
-from sklearn.model_selection import StratifiedKFold, KFold, GroupKFold
+from sklearn.model_selection import StratifiedKFold, KFold, StratifiedGroupKFold
 import matplotlib as mpl
 from scipy import interp
 from sklearn.metrics import make_scorer, confusion_matrix, RocCurveDisplay
@@ -12,7 +12,7 @@ def _specificity_score(y_true, y_pred):
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
     return tn / (tn + fp)
 
-def _evaluate_classification_model(model, X_test, y_test, scoring, cv=None):
+def _evaluate_classification_model(model, X_test, y_test, scoring, cv=None, group=None):
     from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, \
         matthews_corrcoef
 
@@ -23,12 +23,12 @@ def _evaluate_classification_model(model, X_test, y_test, scoring, cv=None):
             # 没有random_state
             if metric == 'specificity':
                 specificity_scorer = make_scorer(_specificity_score)
-                metric_scores = cross_val_score(model, X_test, y_test, scoring=specificity_scorer)
+                metric_scores = cross_val_score(model, X_test, y_test, scoring=specificity_scorer, cv=cv, groups=group)
             elif metric == 'mcc':
                 mr = 'matthews_corrcoef'
-                metric_scores = cross_val_score(model, X_test, y_test, scoring=mr, cv=cv)
+                metric_scores = cross_val_score(model, X_test, y_test, scoring=mr, cv=cv, groups=group)
             else:
-                metric_scores = cross_val_score(model, X_test, y_test, scoring=metric, cv=cv)
+                metric_scores = cross_val_score(model, X_test, y_test, scoring=metric, cv=cv, groups=group)
             #计算均值，可以加上sd
             scores[metric] = np.mean(metric_scores)
         return scores
@@ -111,7 +111,7 @@ def _evaluate_regression_model(model, X_test, y_test, scoring, cv=None):
         return scores
 
 
-def evaluate_model(model, X_test, y_test, scoring, cv=None, task='classification'):
+def evaluate_model(model, X_test, y_test, scoring, cv=None, group=None, task='classification'):
 
     results_dict = {}
 
@@ -121,7 +121,7 @@ def evaluate_model(model, X_test, y_test, scoring, cv=None, task='classification
             metrics_dict = {}
 
             if task == 'classification':
-                metrics_dict = _evaluate_classification_model(eval_model, X_test, y_test, scoring, cv)
+                metrics_dict = _evaluate_classification_model(eval_model, X_test, y_test, scoring, cv, group=group)
             else:
                 metrics_dict = _evaluate_regression_model(eval_model, X_test, y_test, scoring, cv)
 

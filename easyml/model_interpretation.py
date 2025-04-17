@@ -1,7 +1,7 @@
 import shap
 from sklearn.inspection import permutation_importance
 from sklearn.ensemble import *
-from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedKFold, RepeatedKFold, KFold
+from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedKFold, RepeatedKFold, KFold, StratifiedGroupKFold
 from sklearn.svm import SVC, SVR
 from sklearn.linear_model import LogisticRegression
 import xgboost as xgb
