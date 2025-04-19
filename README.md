@@ -1,7 +1,7 @@
 # EasyML
 A User-Friendly Python Package for Microbiome Machine Learning Research.
 <br/><br/>
-<p align="center"><img src="./easyml.png" height="200"/></p>
+<p align="center"><img src="./easyml.jpg" height="200"/></p>
 
 ## Background
 Machine learning (ML) has emerged as a powerful tool in microbiome research, capable of uncovering patterns that elude traditional methods, yet its complexity often limits accessibility. To address this barrier, we introduce easyML in this study—a python package specifically designed to facilitate microbiome machine learning. easyML supports both single-study modeling and cross-study meta-analysis, streamlining complex analytical processes with pre-configured workflows that allow entire analyses to be completed with a single line of code, and typically, general analyses require no more than 10 lines of code. This package makes advanced machine learning techniques more accessible to researchers across varying levels of expertise. 
