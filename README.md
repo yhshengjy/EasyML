@@ -59,7 +59,7 @@ eml.evaluate_model(holdout='test',
 eml.interpret_model(method='shap',index=[0,1], plot_savedir='e:/easyML-case/', show=False)
 
 # Calculate model specificity for multiple diseases, using packaged data, and save the results to the specified path
-eml.model_specificity(disease=['ACVD', 'T2D', 'T1D', 'CRC', 'PD'], use_packagedata=True,# 指定是否使用内置的数据包，默认为 True
+eml.model_specificity(disease=['ACVD', 'T2D', 'T1D', 'CRC', 'PD'], use_packagedata=True,
                       plot_path='e:/easyML-case/')
 ```
 ### Simplifying ML pipelines to a single line
