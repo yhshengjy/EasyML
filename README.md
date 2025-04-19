@@ -29,20 +29,19 @@ eml = easyML(filename='e:/easyML-case/IBD.csv',
 eml.preprocess_data(random_state=1)
 
 # Train models using RandomForest, ExtraTrees, GBM and GradientBoosting, 
-# performing 50 iterations of hyperparameter optimization, with a random seed set to 0
+# performing 50 iterations of hyperparameter optimization
 eml.train_model(model_names=['RandomForest', 
                              'ExtraTrees', 
                              'GradientBoosting',
                              'XGBoost'
                             ],
-               n_iter=50,
-               random_state=0)
+               n_iter=50)
 
 
 # Evaluate model performance using various metrics, including ROC AUC, F1, accuracy, precision, recall, and MCC, 
 # and generate ROC and PR curve plots, saving them to the specified directory
 eml.evaluate_model(scoring=['roc_auc','f1','accuracy','precision','recall','mcc'],
-                   plot_roc_pr_model=True, 
+                   plot_model=True, 
                    plot_savedir='e:/easyML-case/')
 
 # Automatically select the best-performing model
@@ -51,7 +50,7 @@ eml.auto_select_model()
 # Evaluate model performance on the test set using the same metrics as before, and save ROC and PR curve plots to the specified directory
 eml.evaluate_model(holdout='test',
                    scoring=['roc_auc','f1','accuracy','precision','recall','mcc'],
-                   plot_roc_pr_model=True, 
+                   plot_model=True, 
                    plot_savedir='e:/easyML-case/')
 
 # Interpret the model using the SHAP method for samples with index 0 and 1, 
