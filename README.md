@@ -41,7 +41,7 @@ eml.train_model(model_names=['RandomForest',
 # and generate ROC and PR curve plots, saving them to the specified directory
 eml.evaluate_model(scoring=['roc_auc','f1','accuracy','precision','recall','mcc'],
                    plot_model=True, 
-                   plot_savedir='e:/easyML-case/')
+                   plot_savedir='./')
 
 # Automatically select the best-performing model
 eml.auto_select_model()
@@ -50,7 +50,7 @@ eml.auto_select_model()
 eml.evaluate_model(holdout='test',
                    scoring=['roc_auc','f1','accuracy','precision','recall','mcc'],
                    plot_model=True, 
-                   plot_savedir='e:/easyML-case/')
+                   plot_savedir='./')
 
 # Interpret the model using the SHAP method for samples with index 0 and 1, 
 #saving the interpretation results to the specified directory, with the show option set to False
@@ -58,7 +58,7 @@ eml.interpret_model(method='shap',index=[0,1], plot_savedir='e:/easyML-case/', s
 
 # Calculate model specificity for multiple diseases, using packaged data, and save the results to the specified path
 eml.model_specificity(disease=['ACVD', 'T2D', 'T1D', 'CRC', 'PD'], use_packagedata=True,
-                      plot_path='e:/easyML-case/')
+                      plot_path='./')
 ```
 ### Simplifying ML pipelines to a single line
 ```python
@@ -69,7 +69,7 @@ oneliner_train_model(filename=./your_data.csv,
                      target='disease',
                      stratify=True,
                      search_methods='bayesian',
-                     plot_savedir='e:/easyML-case/')
+                     plot_savedir='./')
 
 # One-liner for study-to-study transfer learning
 evaluation_results, eml_instances = study_to_study_transfer(filename="./datasets/", 
@@ -79,7 +79,7 @@ evaluation_results, eml_instances = study_to_study_transfer(filename="./datasets
                                                             group='subject_id',
                                                             cv=['StratifiedGroupKFold','StratifiedGroupKFold','StratifiedKFold'],
                                                             scoring='roc_auc',
-                                                            plotpath='e:/easyML-case/',
+                                                            plotpath='./',
                                                             random_state=1)
 
 # One-liner for leave-one-study-out evaluation
@@ -90,7 +90,7 @@ evaluation_results_loco = leave_one_study_out(filename="./datasets/",
                                               group='subject_id',
                                               cv='StratifiedGroupKFold',
                                               scoring='roc_auc',
-                                              plotpath='e:/easyML-case/',  
+                                              plotpath='./',  
                                               random_state=1)
 ```
 
